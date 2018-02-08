@@ -130,20 +130,36 @@ function createPriceChart(){
         }
     });*/
     new Chart($('#chart'), {
-        type:'line',
+        type:'bar',
         data:{
             datasets:[{
+                label:'매-전',
+                data:datas[2],
+                backgroundColor: "rgba(107, 201, 8, 0.2)",
+                borderColor: "rgba(107, 201, 8, 1)",
+                hoverBackgroundColor: "rgba(72, 137, 2, 0.2)",
+                hoverBorderColor: "rgba(72, 137, 2, 1)",
+            },{
                 label:'매매가',
                 data:datas[0],
+                type:'line',
+                backgroundColor: "rgba(255,99,132,0.2)",
+                borderColor: "rgba(255,99,132,1)",
+                hoverBackgroundColor: "rgba(255,99,132,0.4)",
+                hoverBorderColor: "rgba(255,99,132,1)",
             },{
                 label:'전세가',
                 data:datas[1],
-            },{
-                label:'매-전',
-                data:datas[2],
-                type:'bar'
+                type:'line',
+                backgroundColor: "rgba(0, 144, 255, 0.2)",
+                borderColor: "rgba(0, 144, 255, 1)",
+                hoverBackgroundColor: "rgba(0, 108, 191, 0.2)",
+                hoverBorderColor: "rgba(0, 108, 191, 1)",
             }],
             labels:labels
+        },
+        options:{
+            maintainAspectRatio: false,
         }
     });
 }
