@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+
+    <link href="bootstrap/css/bootstrap.min.css" rel="stylesheet" media="screen">
+    <link href="tableexport/css/tableexport.min.css" rel="stylesheet" media="screen">
+    <link href="showLoading/css/showLoading.css" rel="stylesheet" media="screen" />
+
+    <style>
+        body{
+            width:620px;
+            padding:0;
+        }
+        table#apt-price thead tr th, table#apt-price tbody tr th{
+            text-align: center;
+            vertical-align: middle;
+        }
+        table#apt-price tbody tr td{
+            text-align: right;
+            vertical-align: middle;
+        }
+    </style>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+    <script src="tableexport/js/tableexport.min.js"></script>
+    <script src="moment.js"></script>
+    <script src="bootstrap/js/bootstrap.min.js"></script>
+    <script src="popup.js"></script>
+    <script type="text/javascript" src="showLoading/js/jquery.showLoading.js"></script>
+
+</head>
+<body>
+    <div style="padding:15px;">
+        <h4 style="margin-top:0;">KB 시세 긁어오기</h4>
+        <hr>
+        <form class="form">
+            <div class="form-group">
+                <label class="control-label">과거시세 URL 주소</label><input class="form-control" name="url" placeholder="" />
+            </div>
+            <div class="form-group">
+                <div class="btn btn-success btn-send">불러오기</div> <div class="btn btn-success btn-excel pull-right">Excel 다운로드</div>
+            </div>
+        </form>
+        <hr>
+        <table class="table table-bordered table-condensed text-center" id="apt-price" style="display: none;">
+            <thead>
+            <tr><th colspan="7" id="apt-name"></th></tr>
+            <tr><th rowspan="2">기준월</th><th colspan="3">매매가(만원)</th><th colspan="3">전세가(만원)</th></tr>
+            <tr><th>하위평균가</th><th>일반평균가</th><th>상위평균가</th><th>하위평균가</th><th>일반평균가</th><th>상위평균가</th></tr>
+            </thead>
+            <tbody id="total-render"></tbody>
+        </table>
+    </div>
+    <div style="visibility: hidden;" id="temp-render"></div>
+    <iframe id="txtArea1" style="display:none"></iframe>
+</body>
+</html>

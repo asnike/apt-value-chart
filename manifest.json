@@ -1,0 +1,21 @@
+{
+  "manifest_version":2,
+  "name":"apt-value-chart",
+  "description":"apt-value-chart",
+  "version":"0.1",
+  "app":{
+    "background":{
+      "scripts":["src/background.js"]
+    }
+  },
+  "icons":{
+    "48":"public/images/icon64.png",
+    "128":"public/images/icon128.png"
+  },
+  "permissions":[
+      "<all_urls>",
+      "http://*/",
+      "https://*/",
+      "storage",
+  ]
+}
