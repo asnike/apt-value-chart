@@ -13,9 +13,10 @@
     "128":"public/images/icon128.png"
   },
   "permissions":[
+      "unlimitedStorage",
       "<all_urls>",
       "http://*/",
       "https://*/",
-      "storage",
+      "storage"
   ]
 }
