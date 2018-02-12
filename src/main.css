@@ -126,4 +126,8 @@ body {
 .nav>li>a{
     padding-top:5px;
     padding-bottom:5px;
+    cursor: pointer;
+}
+.nav>li>a:focus, .nav>li>a:hover{
+    background: #ffb26d;
 }

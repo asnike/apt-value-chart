@@ -9,6 +9,7 @@
     }
   },
   "icons":{
+
     "48":"public/images/icon64.png",
     "128":"public/images/icon128.png"
   },
@@ -17,6 +18,7 @@
       "<all_urls>",
       "http://*/",
       "https://*/",
-      "storage"
+      "storage",
+      "fileSystem"
   ]
 }

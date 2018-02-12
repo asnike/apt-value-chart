@@ -1,53 +1,142 @@
+
+
 var IDB = (function(){
-    const APT_PRICES = 'apt_prices';
-    var idb, OpenIDB = function(){
-        idb = window.indexedDB;
-        return idb.open('kbsise', 1, function(upgradeDb){
-            const AptPricesStore = upgradeDb.createObjectStore(APT_PRICES, {
-                keyPath:'name'
-            });
+    const TABLE_APT_PRICES = 'apt_prices';
+    var db,
+    init = function(){
+        if(!window.indexedDB){
+            return window.alert("Your browser doesn't support a stable version of IndexedDB.")
+        }
+
+        var request = window.indexedDB.open('value-chart', 1);
+
+        return new Promise(function(resolve, reject){
+            request.onerror = function(event){
+                console.log("error: ");
+                reject();
+            };
+            request.onsuccess = function(event){
+                db = request.result;
+                console.log("success: " + db);
+                resolve(IDB);
+            };
+            request.onupgradeneeded = function(event){
+                db = event.target.result;
+                var objectStore = db.createObjectStore(TABLE_APT_PRICES, {
+                    keyPath:'url'
+                });
+            };
         });
     },
-    create = function(dbStore, data){
-        OpenIDB().then((db)=>{
-            const transaction = db.transaction(dbStore, 'readwrite');
-            const store = transaction.objectStore(dbStore);
+    create = function(table, data){
+        console.log('idb add call!!');
+        const request = db.transaction([table], 'readwrite')
+            .objectStore(table)
+            .add(data);
 
-            store.put(data);
-
-            return transaction.complete;
-        })
+        request.onsuccess = function(event){
+            return console.log('data added success: ', event);
+        };
+        request.onerror = function(event){
+            return console.log('data added failure: ', event);
+        };
     },
-    read = function(dbStore, key){
-        OpenIDB().then((db)=> {
-            const transaction = db.transaction(dbStore);
-            const store = transaction.objectStore(dbStore);
-
-            if(key){
-                const index = store.index(key);
-                return index.getAll();
-            }else{
-                return store.getAll();
-            }
+    read = function(table, key){
+        const request = db.transaction([table])
+            .objectStore(table)
+            .get(key);
+        return new Promise(function(resolve, reject){
+            request.onsuccess = function(event){
+                if(request.result){
+                    console.log('data read success: ', event);
+                    resolve(event.target.result);
+                }else{
+                    reject();
+                }
+            };
+            request.onerror = function(event){
+                console.log('data read failure: ', event);
+                reject();
+            };
         });
     },
-    del = function(dbStore, key){
-        OpenIDB().then((db) => {
-            const transaction = db.transaction(dbStore, 'readwrite');
-            const store = transaction.objectStore(dbStore);
+    readAll = function(table){
+        const request = db.transaction([table])
+            .objectStore(table)
+            .openCursor();
 
-            store.delete(key);
-
-            return transaction.complete;
+        return new Promise(function(resolve, reject){
+            var datas = [];
+            request.onsuccess = function(event){
+                var cursor = event.target.result;
+                if(cursor){
+                    datas.push(cursor.value);
+                    cursor.continue();
+                }else{
+                    resolve(datas);
+                }
+            };
+            request.onerror = function(event){
+                console.log('data read all failure: ', event);
+                reject();
+            };
         });
+    },
+    del = function(table, key){
+        const request = db.transaction([table], 'readwrite')
+            .objectStore(table)
+            .delete(key);
+
+        request.onsuccess = function(event){
+            console.log('data deleted success: ', event);
+        };
+        request.onerror = function(event){
+            console.log('data deleted failure: ', event);
+        };
     };
 
     return {
+        init:init,
         create:create,
         update:create,
         read:read,
         del:del,
-        APT_PRICES:APT_PRICES,
+        readAll:readAll,
+        TABLE_APT_PRICES:TABLE_APT_PRICES,
+    }
+})();
+var SIDEBAR = (function(){
+    var LIST_CLICK = 'list_click'
+        listeners = {}, init = function(){
+        $('#saved-lists').on('click', 'li>a', function(e){
+            /*console.log($(e.target).attr('data-idx'), 'clicked!!!!');*/
+            if(typeof listeners[LIST_CLICK] == 'function'){
+                listeners[LIST_CLICK]($(e.target).attr('data-idx'));
+            }
+        });
+    },
+    reload = function(){
+        IDB.readAll(IDB.TABLE_APT_PRICES)
+            .then(function(datas){
+                console.log(datas);
+                render(datas);
+            }, function(){
+
+            });
+    },
+    render = function(datas){
+        datas.forEach((item, idx) => $(`
+            <li><a data-idx="${idx}">${item.name}</a></li>    
+        `).appendTo('#saved-lists'));
+    },
+    addEventListener = function(name, func){
+        listeners[name] = func;
+    };
+    init();
+    return {
+        reload:reload,
+        addEventListener:addEventListener,
+        LIST_CLICK:LIST_CLICK,
     }
 })();
 
@@ -57,6 +146,19 @@ var IDB = (function(){
         $('.btn-send').click(crawlingKB);
         $('#month').val(moment().format('MM'));
         $('#month').change(changeMonth);
+
+        IDB.init()
+            .then(function(){
+                SIDEBAR.addEventListener(SIDEBAR.LIST_CLICK, clickList);
+                SIDEBAR.reload();
+            });
+    },
+    clickList = function(idx){
+        console.log('click~~~', idx);
+        datas = IDB.readAll(IDB.TABLE_APT_PRICES)
+            .then(function(datas){
+                renderFromDatas(datas[idx]);
+            });
     },
     downloadExcel = function(){
         var tab_text="<table border='2px'><tr bgcolor='#87AFC6'>";
@@ -66,7 +168,6 @@ var IDB = (function(){
         for(j = 0 ; j < tab.rows.length ; j++)
         {
             tab_text=tab_text+tab.rows[j].innerHTML+"</tr>";
-            //tab_text=tab_text+"</tr>";
         }
 
         tab_text=tab_text+"</table>";
@@ -107,15 +208,16 @@ var IDB = (function(){
             totalCount++;
         }
         var currentCount = 0;
-
+        var url = $('input[name="url"]').val(), datas;
         console.log(years);
-        /*if(name){
-            datas = IDB.read(IDB.APT_PRICES, name);
-            console.log(datas);
-        }else{
-            start();
-        }*/
-        start();
+        datas = IDB.read(IDB.TABLE_APT_PRICES, url)
+            .then(function(datas){
+                    console.log('readed: ', datas);
+                    renderFromDatas(datas);
+                },
+                function(){
+                    start();
+                });
 
         function start(){
             console.log('start~~');
@@ -127,42 +229,24 @@ var IDB = (function(){
                     endYear:param[1].substr(0, 4),
                     endMonth:param[1].substr(4, 2)
                 };
-                currentCount++;
                 getData(param);
+                currentCount++;
                 console.log('get data start...');
             }else{
                 console.log('get data end...');
 
-                $('.tbl_col').each(function(idx, item){
-                    console.log('item : ', $(item).children('table').children('tbody'), idx);
-                    $($(item).children('table').children('tbody').html()).appendTo('#total-render');
-                });
-                console.log('이름 : ', $($('#물건식별자').children(':selected')[0]).text());
-
-
-                $('#apt-name').text($($('#부동산대지역코드').children(':selected')[0]).text() + ' '
-                    + $($('#부동산중지역코드').children(':selected')[0]).text() + ' '
-                    + $($('#부동산소지역코드').children(':selected')[0]).text() + ' '
-                    +$($('#물건식별자').children(':selected')[0]).text());
-                $('#temp-render').html('');
-                $('#apt-price').css({'display':'table'});
-
-                /*datas = parseDatas();
-                IDB.create(IDB.APT_PRICES, {
-                    name:$('#apt-name').text(),
-                    datas:datas
-                });*/
-                //console.log('saved..!');
-                createPriceChart();
-                createValueChart();
-
+                result = parseDatas();
+                datas = { url:url, prices:result.prices, name:result.name };
+                IDB.create(IDB.TABLE_APT_PRICES, datas);
+                console.log('saved..!');
+                renderFromDatas(datas);
                 $('body').hideLoading();
             }
         }
         function getData(param){
             var query = '&조회시작년도='+param.startYear+'&조회시작월='+param.startMonth+'&조회종료년도='+param.endYear+'&조회종료월='+param.endMonth;
             $.ajax({
-                url:$('input[name="url"]').val() + query,
+                url:url + query,
             })
                 .done(function(result){
                     console.log(result);
@@ -172,7 +256,7 @@ var IDB = (function(){
         }
     },
     parseDatas = function(){
-        var lists = $('#total-render').children(), datas = [];
+        var lists = $('.tbl_col tbody').children(), prices = [], name;
 
         lists.each((idx, item) => {
             let values = [];
@@ -180,26 +264,48 @@ var IDB = (function(){
             $(item).children().each((idx, item)=>{
                 values.push(idx == 0 ? $(item).text().replace(/\,/g, '') : parseInt($(item).text().replace(/\,/g, '')));
             });
-            datas.push(values);
+            prices.push(values);
         });
 
-        console.log(datas);
+        console.log(prices);
 
-        return datas;
+        name = $($('#부동산대지역코드').children(':selected')[0]).text() + ' '
+        + $($('#부동산중지역코드').children(':selected')[0]).text() + ' '
+        + $($('#부동산소지역코드').children(':selected')[0]).text() + ' '
+        +$($('#물건식별자').children(':selected')[0]).text();
+
+        $('#temp-render').html('');
+
+        return {
+            prices:prices,
+            name:name,
+        };
     },
-    createPriceChart = function(){
-        var lists = $('#total-render').children();
-        console.log('lists : ', lists);
+    changeMonth = function (){
+        var url = $('input[name="url"]').val();
+        datas = IDB.read(IDB.TABLE_APT_PRICES, url)
+            .then(function(datas){
+                    createValueChart(datas.prices);
+                });
+
+    },
+    renderFromDatas = function(datas){
+        createPriecTable(datas);
+        createPriceChart(datas.prices);
+        createValueChart(datas.prices);
+        $('body').hideLoading();
+    },
+    createPriceChart = function(sources){
         for(var datas = [[], [], []], k = 0, l = 2 ; k < l ; k++){
-            for(var i = lists.length - 1, j = 0 ; i > j ; i--){
-                datas[k][datas[k].length] = parseInt($(lists[i]).children(':nth-child(' + (k == 0 ? '3':'6') + ')').text().replace(/\,/g, ''));
+            for(var i = sources.length - 1, j = 0 ; i > j ; i--){
+                datas[k][datas[k].length] = sources[i][k == 0 ? 2:5];
             }
         }
         for(var i = 0, j = datas[0].length ; i < j ; i++){
             datas[2][datas[2].length] = datas[0][i] - datas[1][i];
         }
-        for(var labels = [], i = lists.length - 1, j = 0 ; i > j ; i--){
-            labels[labels.length] = $(lists[i]).children(':nth-child(1)').text();
+        for(var labels = [], i = sources.length - 1, j = 0 ; i > j ; i--){
+            labels[labels.length] = sources[i][0];
         }
         new Chart($('#chart'), {
             type:'bar',
@@ -240,26 +346,21 @@ var IDB = (function(){
                 },
                 tooltips: {
                     mode: 'index',
-                    callbacks: {
-                        footer: function(tooltipItems, data) {
-
-                        },
-                    },
                     footerFontStyle: 'normal'
                 },
             }
         });
     },
-    createValueChart = function(){
-        var lists = $('#total-render').children();
-        console.log('lists : ', $('#month').val());
 
+    createValueChart = function(sources){
+        console.log('month : ', $('#month').val());
 
-        for(var datas = [], labels = [], selectedMonth = $('#month').val(), i = lists.length - 1, j = 0 ; i > j ; i--){
+        for(var date, datas = [], labels = [], selectedMonth = $('#month').val(), i = sources.length - 1, j = 0 ; i > j ; i--){
 
-            if($(lists[i]).children('th').text().split('.')[1] == selectedMonth){
-                datas[datas.length] = parseInt($(lists[i]).children(':nth-child(4)').text().replace(/\,/g, ''))*10000;
-                labels[labels.length] = $(lists[i]).children('th').text().split('.')[0] + '.' + selectedMonth;
+            date = sources[i][0].split('.');
+            if(date[1] == selectedMonth){
+                datas[datas.length] = sources[i][3]*10000;
+                labels[labels.length] = date[0] + '.' + selectedMonth;
             }
         }
 
@@ -308,9 +409,19 @@ var IDB = (function(){
             }
         });
     },
-    changeMonth = function (){
-        createValueChart();
-    },
+    createPriecTable = function(datas){
+        $('#apt-name').text(datas.name);
+        datas.prices.forEach((item, idx)=> $(`<tr><th>${item[0]}</th>
+                <td>${item[1]}</td>
+                <td>${item[2]}</td>
+                <td>${item[3]}</td>
+                <td>${item[4]}</td>
+                <td>${item[5]}</td>
+                <td>${item[6]}</td>
+                </tr>`).appendTo('#total-render')
+        );
+        $('#apt-price').css({'display':'table'});
+    }
     workerMonthlyAvgFee = [3112474,	3252090, 3444054, 3656201, 3900622,	3853189, 4007671, 4248619, 4492364, 4606216, 4734603, 4816665, 4884448, 5039770];
 
     init();
