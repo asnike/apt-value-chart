@@ -87,12 +87,16 @@ var IDB = (function(){
             .objectStore(table)
             .delete(key);
 
-        request.onsuccess = function(event){
-            console.log('data deleted success: ', event);
-        };
-        request.onerror = function(event){
-            console.log('data deleted failure: ', event);
-        };
+        return new Promise(function(resolve, reject){
+            request.onsuccess = function(event){
+                console.log('data deleted success: ', event);
+                resolve();
+            };
+            request.onerror = function(event){
+                console.log('data deleted failure: ', event);
+                reject();
+            };
+        });
     };
 
     return {
@@ -106,28 +110,43 @@ var IDB = (function(){
     }
 })();
 var SIDEBAR = (function(){
-    var LIST_CLICK = 'list_click'
+    var LIST_CLICK = 'list_click',
+        LIST_DEL_CLICK = 'list_del_click',
         listeners = {}, init = function(){
         $('#saved-lists').on('click', 'li>a', function(e){
-            /*console.log($(e.target).attr('data-idx'), 'clicked!!!!');*/
             if(typeof listeners[LIST_CLICK] == 'function'){
                 listeners[LIST_CLICK]($(e.target).attr('data-idx'));
             }
         });
+        $('#saved-lists').on('click', 'li>a>div.btn-del', function(e){
+            console.log('del~~~');
+            if(typeof listeners[LIST_DEL_CLICK] == 'function'){
+                listeners[LIST_DEL_CLICK]($(e.target).attr('data-idx'));
+            }
+            e.stopImmediatePropagation();
+        });
     },
-    reload = function(){
-        IDB.readAll(IDB.TABLE_APT_PRICES)
-            .then(function(datas){
-                console.log(datas);
-                render(datas);
-            }, function(){
+    reload = function(selectedIdx){
+        return new Promise(function(resolve, reject){
+            IDB.readAll(IDB.TABLE_APT_PRICES)
+                .then(function(datas){
+                    console.log(datas);
+                    render(datas, selectedIdx);
+                    resolve(datas);
+                }, function(){
+                    reject();
+                });
+        });
+    },
+    render = function(datas, selectedIdx){
+        $('#saved-lists').html('');
 
-            });
-    },
-    render = function(datas){
-        datas.forEach((item, idx) => $(`
-            <li><a data-idx="${idx}">${item.name}</a></li>    
-        `).appendTo('#saved-lists'));
+        datas.forEach((item, idx) => {
+            var active = selectedIdx == idx ? 'active':'';
+            $(`
+            <li class="${active}"><a data-idx="${idx}">${item.name} <div class="btn btn-danger btn-xs btn-del" data-idx="${idx}">삭제</div></a></li>    
+        `).appendTo('#saved-lists')
+        });
     },
     addEventListener = function(name, func){
         listeners[name] = func;
@@ -137,27 +156,51 @@ var SIDEBAR = (function(){
         reload:reload,
         addEventListener:addEventListener,
         LIST_CLICK:LIST_CLICK,
+        LIST_DEL_CLICK:LIST_DEL_CLICK,
     }
 })();
 
 (function(){
-    var init = function(){
+    var totalDatas, selectedIdx, priceChart, valueChart, init = function(){
         $('.btn-excel').click(downloadExcel);
         $('.btn-send').click(crawlingKB);
         $('#month').val(moment().format('MM'));
         $('#month').change(changeMonth);
 
+        $('body').on('click', '#apt-del-modal .btn-ok', clickDelList);
+
         IDB.init()
             .then(function(){
                 SIDEBAR.addEventListener(SIDEBAR.LIST_CLICK, clickList);
-                SIDEBAR.reload();
+                SIDEBAR.addEventListener(SIDEBAR.LIST_DEL_CLICK, openAptDelModal);
+                SIDEBAR.reload(selectedIdx)
+                    .then(function(result){
+                        totalDatas = result;
+                        console.log('reload : ', totalDatas);
+                    });
             });
     },
     clickList = function(idx){
         console.log('click~~~', idx);
+        selectedIdx = idx;
         datas = IDB.readAll(IDB.TABLE_APT_PRICES)
             .then(function(datas){
                 renderFromDatas(datas[idx]);
+            });
+    },
+    openAptDelModal = function(idx){
+        selectedIdx = idx;
+        $('#apt-del-modal').modal();
+    },
+    clickDelList = function(e){
+        var key = totalDatas[selectedIdx].url;
+        IDB.del(IDB.TABLE_APT_PRICES, key)
+            .then(function(){
+                SIDEBAR.reload()
+                    .then(function(result){
+                        totalDatas = result;
+                        $('#apt-del-modal').modal('hide');
+                    });
             });
     },
     downloadExcel = function(){
@@ -268,11 +311,13 @@ var SIDEBAR = (function(){
         });
 
         console.log(prices);
+        console.log('면적', $($('#주택형일련번호').children(':selected')[0]).text());
 
         name = $($('#부동산대지역코드').children(':selected')[0]).text() + ' '
         + $($('#부동산중지역코드').children(':selected')[0]).text() + ' '
         + $($('#부동산소지역코드').children(':selected')[0]).text() + ' '
-        +$($('#물건식별자').children(':selected')[0]).text();
+        +$($('#물건식별자').children(':selected')[0]).text() + ' '
+        +$($('#주택형일련번호').children(':selected')[0]).text();
 
         $('#temp-render').html('');
 
@@ -282,17 +327,17 @@ var SIDEBAR = (function(){
         };
     },
     changeMonth = function (){
-        var url = $('input[name="url"]').val();
-        datas = IDB.read(IDB.TABLE_APT_PRICES, url)
-            .then(function(datas){
-                    createValueChart(datas.prices);
-                });
-
+        createValueChart(selectedDatas.prices);
     },
     renderFromDatas = function(datas){
+        selectedDatas = datas;
         createPriecTable(datas);
         createPriceChart(datas.prices);
         createValueChart(datas.prices);
+        SIDEBAR.reload(selectedIdx)
+            .then(function(result){
+                totalDatas = result;
+            });
         $('body').hideLoading();
     },
     createPriceChart = function(sources){
@@ -307,7 +352,8 @@ var SIDEBAR = (function(){
         for(var labels = [], i = sources.length - 1, j = 0 ; i > j ; i--){
             labels[labels.length] = sources[i][0];
         }
-        new Chart($('#chart'), {
+        if(priceChart) priceChart.destroy();
+        priceChart = new Chart($('#chart'), {
             type:'bar',
             data:{
                 datasets:[{
@@ -379,7 +425,8 @@ var SIDEBAR = (function(){
 
         console.log(sum, avgs);
 
-        new Chart($('#value-chart'), {
+        if(valueChart) valueChart.destroy();
+        valueChart = new Chart($('#value-chart'), {
             type:'line',
             data:{
                 datasets:[{
@@ -405,6 +452,10 @@ var SIDEBAR = (function(){
                 title: {
                     display: true,
                     text: $('#apt-name').text() + ' 가치차트'
+                },
+                tooltips:{
+                    mode: 'index',
+                    footerFontStyle: 'normal'
                 }
             }
         });
