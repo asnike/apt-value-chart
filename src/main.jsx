@@ -400,7 +400,7 @@ var SIDEBAR = (function(){
         };
     },
     changeMonth = function (){
-        createValueChart(selectedDatas.prices, $('#month').val());
+        createValueChart([selectedDatas], $('#month').val(), valueChart, '#value-chart');
     },
     renderFromDatas = function(datas){
         selectedDatas = datas;
