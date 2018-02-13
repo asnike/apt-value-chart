@@ -211,7 +211,7 @@ var SIDEBAR = (function(){
                     <input type="checkbox" name="compare_selected" style="font-size:18px;" data-idx="${idx}"> 
                     ${item.name}
                 </a>
-                <div class="tools"><div class="btn-del" data-idx="${idx}"><i class="far fa-2x fa-trash-alt"></i> </div>
+                <div class="tools"><div class="btn-del" data-idx="${idx}"><i class="far fa-2x fa-trash-alt" data-idx="${idx}"></i> </div>
                 </div>
             </li>    
         `).appendTo('#saved-lists')
