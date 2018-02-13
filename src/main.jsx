@@ -400,13 +400,13 @@ var SIDEBAR = (function(){
         };
     },
     changeMonth = function (){
-        createValueChart(selectedDatas.prices);
+        createValueChart(selectedDatas.prices, $('#month').val());
     },
     renderFromDatas = function(datas){
         selectedDatas = datas;
         createPriecTable(datas);
         createPriceChart([datas], priceChart, '#chart');
-        createValueChart(datas.prices);
+        createValueChart([datas], $('#month').val(), valueChart, '#value-chart');
         SIDEBAR.reload(selectedIdx)
             .then(function(result){
                 totalDatas = result;
@@ -433,15 +433,6 @@ var SIDEBAR = (function(){
                 name:item.name
             }
         }
-        function random_rgba() {
-            var o = Math.round, r = Math.random, s = 255;
-            return 'rgba(' + o(r()*s) + ',' + o(r()*s) + ',' + o(r()*s) + ',' + r().toFixed(1) + ')';
-        }
-        function random_rgb(a) {
-            var o = Math.round, r = Math.random, s = 255;
-            return 'rgba(' + o(r()*s) + ',' + o(r()*s) + ',' + o(r()*s) + ',' + a + ')';
-        }
-
 
         function makeChart(chartDatas, chart, id){
             if(chart) chart.destroy();
@@ -527,68 +518,91 @@ var SIDEBAR = (function(){
         makeChart(sources.map((item) => makeData(item)), chart, id);
     },
 
-    createValueChart = function(sources){
-        console.log('month : ', $('#month').val());
+    createValueChart = function(sources, month, chart, id){
+        console.log('month : ', month);
 
-        for(var date, datas = [], labels = [], selectedMonth = $('#month').val(), i = sources.length - 1, j = 0 ; i > j ; i--){
+        function makeData(aptData, month){
+            for(var date, datas = [], labels = [], selectedMonth = month, i = aptData.prices.length - 1, j = 0 ; i > j ; i--){
 
-            date = sources[i][0].split('.');
-            if(date[1] == selectedMonth){
-                datas[datas.length] = sources[i][3]*10000;
-                labels[labels.length] = date[0] + '.' + selectedMonth;
-            }
-        }
-
-        console.log('labels :: ', labels);
-
-        for(var values = [], i = 0, j = datas.length ; i < j ; i++){
-            values[values.length] = parseFloat((datas[i]/(workerMonthlyAvgFee[i]*12)).toFixed(2));
-        }
-
-
-        console.log('values :: ', values);
-        let sum = values.reduce((pre, curr) => curr += pre);
-        let avg = parseFloat((sum / values.length).toFixed(2));
-        let avgs = [];
-        values.forEach(()=> avgs.push(avg));
-
-        console.log(sum, avgs);
-
-        if(valueChart) valueChart.destroy();
-        valueChart = new Chart($('#value-chart'), {
-            type:'line',
-            data:{
-                datasets:[{
-                    label:'pir',
-                    data:values,
-                    backgroundColor: "rgba(107, 201, 8, 0)",
-                    borderColor: "rgba(107, 201, 8, 1)",
-                    hoverBackgroundColor: "rgba(72, 137, 2, 0.2)",
-                    hoverBorderColor: "rgba(72, 137, 2, 1)",
-                },{
-                    label:'pir평균',
-                    data:avgs,
-                    /*backgroundColor: "rgba(255,99,132,0.2)",*/
-                    backgroundColor:"rgba(1,1,1,0)",
-                    borderColor: "rgba(255,99,132,1)",
-                    hoverBackgroundColor: "rgba(255,99,132,0.4)",
-                    hoverBorderColor: "rgba(255,99,132,1)",
-                }],
-                labels:labels
-            },
-            options:{
-                maintainAspectRatio: false,
-                title: {
-                    display: true,
-                    text: $('#apt-name').text() + ' 가치차트'
-                },
-                tooltips:{
-                    mode: 'index',
-                    footerFontStyle: 'normal'
+                date = aptData.prices[i][0].split('.');
+                if(date[1] == selectedMonth){
+                    datas[datas.length] = aptData.prices[i][3]*10000;
+                    labels[labels.length] = date[0] + '.' + selectedMonth;
                 }
             }
-        });
-        console.log('chart : ', valueChart);
+
+            console.log('labels :: ', labels);
+
+            for(var values = [], i = 0, j = datas.length ; i < j ; i++){
+                values[values.length] = parseFloat((datas[i]/(workerMonthlyAvgFee[i]*12)).toFixed(2));
+            }
+
+
+            console.log('values :: ', values);
+            let sum = values.reduce((pre, curr) => curr += pre);
+            let avg = parseFloat((sum / values.length).toFixed(2));
+            let avgs = [];
+            values.forEach(()=> avgs.push(avg));
+
+            console.log(sum, avgs);
+
+            return {
+                values,
+                avgs,
+                name:aptData.name,
+                labels,
+            }
+        }
+        makeChart = function(chartDatas, chart, id){
+            if(chart) chart.destroy();
+
+            let datasets = [], names = [];
+
+            chartDatas.forEach((item) => {
+                datasets.push({
+                    label:'pir',
+                    data:item.values,
+                    /*backgroundColor: "rgba(107, 201, 8, 0)",
+                    borderColor: "rgba(107, 201, 8, 1)",*/
+                    backgroundColor: "rgba(107, 201, 8, 0)",
+                    borderColor: random_rgb(1),
+                });
+                datasets.push({
+                    label:'pir평균',
+                    data:item.avgs,
+                    /*backgroundColor:"rgba(1,1,1,0)",
+                    borderColor: "rgba(255,99,132,1)",*/
+                    backgroundColor:"rgba(1,1,1,0)",
+                    borderColor: random_rgb(1),
+                });
+                names.push(item.name);
+            });
+            let data = {
+                datasets:datasets,
+                labels:chartDatas[0].labels
+            };
+            var chartjs = new Chart($(id), {
+                type:'line',
+                data:data,
+                options:{
+                    maintainAspectRatio: false,
+                    title: {
+                        display: true,
+                        text: names.join(', ') + (chartDatas.length > 1 ? ' 가치차트 비교':' 가치차트')
+                    },
+                    tooltips:{
+                        mode: 'index',
+                        footerFontStyle: 'normal'
+                    }
+                }
+            });
+            if(chartDatas.length > 1){
+                compareValueChart = chartjs;
+            }else{
+                valueChart = chartjs;
+            }
+        }
+        makeChart(sources.map((item) => makeData(item, month)), chart, id);
     },
     createPriecTable = function(datas){
         $('#total-render').html('');
@@ -609,9 +623,18 @@ var SIDEBAR = (function(){
             return ALERT.open('2개까지만 선택해주세요.');
         }
         console.log('selectedIndexes : ', selectedIndexes);
-
-        createPriceChart(selectedIndexes.map((idx)=> totalDatas[idx]), comparePriceChart, '#compare-price-chart');
+        let datas = selectedIndexes.map((idx)=> totalDatas[idx]);
+        createPriceChart(datas, comparePriceChart, '#compare-price-chart');
+        createValueChart(datas, $('#month').val(), compareValueChart, '#compare-value-chart');
         $('#compare-modal').modal();
+    },
+    random_rgba = function(){
+        var o = Math.round, r = Math.random, s = 255;
+        return 'rgba(' + o(r()*s) + ',' + o(r()*s) + ',' + o(r()*s) + ',' + r().toFixed(1) + ')';
+    },
+    random_rgb = function(a){
+        var o = Math.round, r = Math.random, s = 255;
+        return 'rgba(' + o(r()*s) + ',' + o(r()*s) + ',' + o(r()*s) + ',' + a + ')';
     },
     workerMonthlyAvgFee = [3112474,	3252090, 3444054, 3656201, 3900622,	3853189, 4007671, 4248619, 4492364, 4606216, 4734603, 4816665, 4884448, 5039770];
 
