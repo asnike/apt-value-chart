@@ -6,6 +6,7 @@
 
     <link href="libs/bootstrap/css/bootstrap.min.css" rel="stylesheet" media="screen">
     <link href="libs/showLoading/css/showLoading.css" rel="stylesheet" media="screen" />
+    <link href="libs/fontawesome/css/fontawesome-all.min.css" rel="stylesheet" />
     <link href="src/main.css" rel="stylesheet" media="screen" />
 </head>
 <body>
@@ -19,9 +20,15 @@
     <div class="container-fluid">
         <div class="row">
             <div class="col-sm-3 col-md-2 sidebar">
+                <div class="sidebar-title text-center">저장된 내역</div>
                 <ul class="nav nav-sidebar" id="saved-lists">
 
                 </ul>
+                <div style="padding:0 15px">
+                    <div class="btn btn-block btn-info btn-compare-select">비교선택</div>
+                    <div class="btn btn-block btn-success btn-compare">비교하기</div>
+                    <div class="btn btn-block btn-warning btn-back">돌아가기</div>
+                </div>
             </div>
             <div class="col-sm-9 col-sm-offset-3 col-md-10 col-md-offset-2 main">
 
@@ -100,12 +107,47 @@
             </div>
         </div>
     </div>
+    <div class="modal fade" tabindex="-1" role="dialog" data-backdrop="static" id="compare-modal">
+        <div class="modal-dialog modal-lg" style="width: 1200px;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title">비교하기</h4>
+                </div>
+                <div class="modal-body">
+                    <div style="position:relative;height:600px;width:1070px;">
+                        <canvas id="compare-price-chart"></canvas>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary btn-ok" data-dismiss="modal">확인</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal fade" tabindex="-1" role="dialog" id="alert-modal" data-backdrop="static">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title">알림</h4>
+                </div>
+                <div class="modal-body">
+                    <p class="contents"></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary btn-ok" data-dismiss="modal">확인</button>
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 <script src="libs/jquery-3.3.1.min.js"></script>
 <script src="libs/bootstrap/js/bootstrap.min.js"></script>
 <script src="libs/moment.js"></script>
 <script type="text/javascript" src="libs/showLoading/js/jquery.showLoading.js"></script>
 <script src="libs/Chart.bundle.min.js"></script>
+<script src="libs/chartjs-color.min.js"></script>
 
 
 <script src="src/main.jsx"></script>

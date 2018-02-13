@@ -109,20 +109,82 @@ var IDB = (function(){
         TABLE_APT_PRICES:TABLE_APT_PRICES,
     }
 })();
+var ALERT = (function(){
+    var init = function(){
+
+    },
+    open = function(msg, title){
+        if(msg){
+            $('#alert-modal .contents').html(msg);
+        }
+        if(title){
+            $('#alert-modal .modal-title').html(title);
+        }
+        $('#alert-modal').modal();
+    },
+    close = function(){
+        $('#alert-modal').modal('hide');
+    };
+    init();
+
+    return{
+        open:open,
+        close:close,
+    }
+})();
 var SIDEBAR = (function(){
     var LIST_CLICK = 'list_click',
         LIST_DEL_CLICK = 'list_del_click',
+
+        COMPARE_CLICK = 'COMPARE_CLICK',
+
+        isSelectionView = false,
         listeners = {}, init = function(){
+
         $('#saved-lists').on('click', 'li>a', function(e){
-            if(typeof listeners[LIST_CLICK] == 'function'){
+            if(typeof listeners[LIST_CLICK] == 'function' && !isSelectionView){
                 listeners[LIST_CLICK]($(e.target).attr('data-idx'));
+            }else{
+                $(e.target).children('input[type="checkbox"]').prop('checked', !$(e.target).children('input[type="checkbox"]').is(':checked'));
             }
         });
-        $('#saved-lists').on('click', 'li>a>div.btn-del', function(e){
+
+        $('#saved-lists').on('click', 'li>a>input[type="checkbox"]', function(e){
+
+            e.stopImmediatePropagation();
+        });
+        $('#saved-lists').on('click', 'li .tools .btn-del', function(e){
             console.log('del~~~');
             if(typeof listeners[LIST_DEL_CLICK] == 'function'){
                 listeners[LIST_DEL_CLICK]($(e.target).attr('data-idx'));
             }
+            e.stopImmediatePropagation();
+        });
+        $('.btn-compare-select').on('click', function(e){
+            isSelectionView = true;
+            $('.sidebar').addClass('select-view');
+            e.stopImmediatePropagation();
+        });
+        $('.btn-compare').on('click', function(e){
+            if(isSelectionView){
+                console.log('compare!!!!');
+                let selected = $('input[name="compare_selected"]:checked');
+                console.log('cccc : ', selected);
+                if(selected && selected.length > 1){
+                    var selectedIndexes = [];
+                    selected.each(function(idx, item){
+                        selectedIndexes.push(parseInt($(item).attr('data-idx')));
+                    });
+                    listeners[COMPARE_CLICK](selectedIndexes);
+                }else{
+                    ALERT.open('아파트를 2개 이상 선택해주세요.')
+                }
+            }
+            e.stopImmediatePropagation();
+        });
+        $('.btn-back').on('click', function(e){
+            isSelectionView = false;
+            $('.sidebar').removeClass('select-view');
             e.stopImmediatePropagation();
         });
     },
@@ -144,7 +206,14 @@ var SIDEBAR = (function(){
         datas.forEach((item, idx) => {
             var active = selectedIdx == idx ? 'active':'';
             $(`
-            <li class="${active}"><a data-idx="${idx}">${item.name} <div class="btn btn-danger btn-xs btn-del" data-idx="${idx}">삭제</div></a></li>    
+            <li class="saved-list ${active}">
+                <a data-idx="${idx}">
+                    <input type="checkbox" name="compare_selected" style="font-size:18px;" data-idx="${idx}"> 
+                    ${item.name}
+                </a>
+                <div class="tools"><div class="btn-del" data-idx="${idx}"><i class="far fa-2x fa-trash-alt"></i> </div>
+                </div>
+            </li>    
         `).appendTo('#saved-lists')
         });
     },
@@ -157,11 +226,14 @@ var SIDEBAR = (function(){
         addEventListener:addEventListener,
         LIST_CLICK:LIST_CLICK,
         LIST_DEL_CLICK:LIST_DEL_CLICK,
+        COMPARE_CLICK:COMPARE_CLICK,
     }
 })();
 
 (function(){
-    var totalDatas, selectedIdx, priceChart, valueChart, init = function(){
+    var totalDatas, selectedIdx, priceChart, valueChart,
+        comparePriceChart, compareValueChart,
+        init = function(){
         $('.btn-excel').click(downloadExcel);
         $('.btn-send').click(crawlingKB);
         $('#month').val(moment().format('MM'));
@@ -173,6 +245,7 @@ var SIDEBAR = (function(){
             .then(function(){
                 SIDEBAR.addEventListener(SIDEBAR.LIST_CLICK, clickList);
                 SIDEBAR.addEventListener(SIDEBAR.LIST_DEL_CLICK, openAptDelModal);
+                SIDEBAR.addEventListener(SIDEBAR.COMPARE_CLICK, compareApts);
                 SIDEBAR.reload(selectedIdx)
                     .then(function(result){
                         totalDatas = result;
@@ -332,7 +405,7 @@ var SIDEBAR = (function(){
     renderFromDatas = function(datas){
         selectedDatas = datas;
         createPriecTable(datas);
-        createPriceChart(datas.prices);
+        createPriceChart([datas], priceChart, '#chart');
         createValueChart(datas.prices);
         SIDEBAR.reload(selectedIdx)
             .then(function(result){
@@ -340,62 +413,118 @@ var SIDEBAR = (function(){
             });
         $('body').hideLoading();
     },
-    createPriceChart = function(sources){
-        for(var datas = [[], [], []], k = 0, l = 2 ; k < l ; k++){
-            for(var i = sources.length - 1, j = 0 ; i > j ; i--){
-                datas[k][datas[k].length] = sources[i][k == 0 ? 2:5];
+    createPriceChart = function(sources, chart, id){
+        function makeData(item){
+            for(var datas = [[], [], []], k = 0, l = 2 ; k < l ; k++){
+                for(var i = item.prices.length - 1, j = 0 ; i > j ; i--){
+                    datas[k][datas[k].length] = item.prices[i][k == 0 ? 2:5];
+                }
+            }
+            for(var i = 0, j = datas[0].length ; i < j ; i++){
+                datas[2][datas[2].length] = datas[0][i] - datas[1][i];
+            }
+            for(var labels = [], i = item.prices.length - 1, j = 0 ; i > j ; i--){
+                labels[labels.length] = item.prices[i][0];
+            }
+
+            return {
+                datas,
+                labels,
+                name:item.name
             }
         }
-        for(var i = 0, j = datas[0].length ; i < j ; i++){
-            datas[2][datas[2].length] = datas[0][i] - datas[1][i];
+        function random_rgba() {
+            var o = Math.round, r = Math.random, s = 255;
+            return 'rgba(' + o(r()*s) + ',' + o(r()*s) + ',' + o(r()*s) + ',' + r().toFixed(1) + ')';
         }
-        for(var labels = [], i = sources.length - 1, j = 0 ; i > j ; i--){
-            labels[labels.length] = sources[i][0];
+        function random_rgb(a) {
+            var o = Math.round, r = Math.random, s = 255;
+            return 'rgba(' + o(r()*s) + ',' + o(r()*s) + ',' + o(r()*s) + ',' + a + ')';
         }
-        if(priceChart) priceChart.destroy();
-        priceChart = new Chart($('#chart'), {
-            type:'bar',
-            data:{
-                datasets:[{
+
+
+        function makeChart(chartDatas, chart, id){
+            if(chart) chart.destroy();
+
+            //data 만들기
+            let datasets = [], name = [];
+            chartDatas.forEach((item)=>{
+                var barColor = random_rgba(1);
+                datasets.push({
                     label:'매-전',
-                    data:datas[2],
-                    backgroundColor: "rgba(107, 201, 8, 0.2)",
+                    data:item.datas[2],
+                    /*backgroundColor: "rgba(107, 201, 8, 0.2)",
                     borderColor: "rgba(107, 201, 8, 1)",
                     hoverBackgroundColor: "rgba(72, 137, 2, 0.2)",
-                    hoverBorderColor: "rgba(72, 137, 2, 1)",
-                },{
+                    hoverBorderColor: "rgba(72, 137, 2, 1)",*/
+                    backgroundColor: Color(barColor).clearer(0.3).rgbaString(),
+                    borderColor: Color(barColor).rgbaString(),
+                    hoverBackgroundColor: Color(barColor).darken(0.3).clearer(0.3).rgbaString(),
+                    hoverBorderColor: Color(barColor).darken(0.3).rgbaString()
+                });
+                datasets.push({
                     label:'매매가',
-                    data:datas[0],
+                    data:item.datas[0],
                     type:'line',
-                    /*backgroundColor: "rgba(255,99,132,0.2)",*/
                     backgroundColor:"rgba(1,1,1,0)",
-                    borderColor: "rgba(255,99,132,1)",
-                    hoverBackgroundColor: "rgba(255,99,132,0.4)",
-                    hoverBorderColor: "rgba(255,99,132,1)",
-                },{
+                    borderColor:random_rgb(1)
+                    /*borderColor: "rgba(255,99,132,1)",*/
+                });
+                datasets.push({
                     label:'전세가',
-                    data:datas[1],
+                    data:item.datas[1],
                     type:'line',
-                    /*backgroundColor: "rgba(0, 144, 255, 0.2)",*/
                     backgroundColor:"rgba(1,1,1,0)",
-                    borderColor: "rgba(0, 144, 255, 1)",
-                    hoverBackgroundColor: "rgba(0, 108, 191, 0.2)",
-                    hoverBorderColor: "rgba(0, 108, 191, 1)",
-                }],
-                labels:labels
-            },
-            options:{
-                maintainAspectRatio: false,
-                title: {
-                    display: true,
-                    text: $('#apt-name').text() + ' 매매-전세-갭 그래프'
-                },
-                tooltips: {
-                    mode: 'index',
-                    footerFontStyle: 'normal'
-                },
+                    borderColor:random_rgb(1)
+                    /*borderColor: "rgba(0, 144, 255, 1)",*/
+                });
+
+                name.push(item.name);
+            });
+
+            console.log('name : ', name);
+            let data = {
+                datasets:datasets,
+                labels:chartDatas[0].labels
+            };
+
+            //그리기
+            var chartjs = new Chart($(id), {
+                type:'bar',
+                data:data,
+                options:{
+                    maintainAspectRatio: false,
+                    title: {
+                        display: true,
+                        text: name.join(', ') + (chartDatas.length > 1 ? ' 비교 그래프':' 매매-전세-갭 그래프')
+                    },
+                    tooltips: {
+                        mode: 'index',
+                        callbacks: {
+                            footer: function(tooltipItems, data) {
+                                var gap = 0;
+                                console.log('tooltip : ', tooltipItems, data);
+                                /*tooltipItems.forEach(function(tooltipItem) {
+                                    gap += data.datasets[tooltipItem.datasetIndex].data[tooltipItem.index];
+                                });*/
+                                if(tooltipItems.length == 2){
+                                    gap = data.datasets[tooltipItems[0].datasetIndex].data[tooltipItems[0].index] - data.datasets[tooltipItems[1].datasetIndex].data[tooltipItems[1].index];
+                                    return 'gap: ' + gap;
+                                }
+                            },
+                        },
+                        footerFontStyle: 'normal'
+                    },
+                }
+            });
+            if(chartDatas.length > 1){
+                comparePriceChart = chartjs;
+            }else{
+                priceChart = chartjs;
             }
-        });
+        }
+
+        makeChart(sources.map((item) => makeData(item)), chart, id);
     },
 
     createValueChart = function(sources){
@@ -459,8 +588,10 @@ var SIDEBAR = (function(){
                 }
             }
         });
+        console.log('chart : ', valueChart);
     },
     createPriecTable = function(datas){
+        $('#total-render').html('');
         $('#apt-name').text(datas.name);
         datas.prices.forEach((item, idx)=> $(`<tr><th>${item[0]}</th>
                 <td>${item[1]}</td>
@@ -472,7 +603,16 @@ var SIDEBAR = (function(){
                 </tr>`).appendTo('#total-render')
         );
         $('#apt-price').css({'display':'table'});
-    }
+    },
+    compareApts = function(selectedIndexes){
+        if(selectedIndexes.length > 2){
+            return ALERT.open('2개까지만 선택해주세요.');
+        }
+        console.log('selectedIndexes : ', selectedIndexes);
+
+        createPriceChart(selectedIndexes.map((idx)=> totalDatas[idx]), comparePriceChart, '#compare-price-chart');
+        $('#compare-modal').modal();
+    },
     workerMonthlyAvgFee = [3112474,	3252090, 3444054, 3656201, 3900622,	3853189, 4007671, 4248619, 4492364, 4606216, 4734603, 4816665, 4884448, 5039770];
 
     init();

@@ -55,7 +55,8 @@ body {
         left: 0;
         z-index: 1000;
         display: block;
-        padding: 20px;
+        /*padding: 20px;*/
+        padding:0px;
         overflow-x: hidden;
         overflow-y: auto; /* Scrollable contents if viewport is shorter than content. */
         background-color: #f5f5f5;/*#ffd15c*//*#f5f5f5*/;
@@ -69,6 +70,11 @@ body {
     margin-bottom: 20px;
     margin-left: -20px;
 }
+.nav-sidebar{
+    margin-right: 0;
+    margin-left: 0;
+}
+
 .nav-sidebar > li > a {
     padding-right: 20px;
     padding-left: 20px;
@@ -132,7 +138,7 @@ body {
     color:#333;
     font-size:12px;
 }
-.nav>li>a:focus, .nav>li>a:hover{
+.nav>li>a:focus, .nav>li>a:hover, .nav>li:hover{
     background: #bfbfbf;
 }
 .nav-sidebar > .active > a, .nav-sidebar > .active > a:hover, .nav-sidebar > .active > a:focus{
@@ -140,4 +146,52 @@ body {
     font-weight:bold;
     color:#333333;
     /*text-shadow: #000000 0 0 10px;*/
+}
+
+.sidebar-title{
+    padding:10px;
+    border-bottom:1px solid #ccc;
+}
+
+#saved-lists{
+
+}
+
+#saved-lists .saved-list{
+    position: relative;
+}
+#saved-lists .saved-list .tools{
+    padding:7px;
+    right:0;
+    top:0;
+    position: absolute;
+    color:#333;
+    display: none;
+}
+
+#saved-lists .saved-list:hover .tools, #saved-lists .saved-list .tools:hover{
+    display: block;
+}
+.sidebar.select-view #saved-lists .saved-list:hover .tools, .sidebar.select-view #saved-lists .saved-list .tools:hover{
+    display: none;
+}
+#saved-lists .saved-list .tools div{
+    cursor: pointer;
+}
+
+#saved-lists .saved-list a>input[type="checkbox"]{
+    display: none;
+}
+
+.btn-back, .btn-compare{
+    display: none;
+}
+.sidebar.select-view #saved-lists .saved-list a>input[type="checkbox"]{
+    display: inline;
+}
+.sidebar.select-view .btn-compare-select{
+    display: none;
+}
+.sidebar.select-view .btn-back, .sidebar.select-view .btn-compare{
+    display: block;;
 }
