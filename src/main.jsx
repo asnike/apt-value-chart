@@ -476,6 +476,16 @@ var SIDEBAR = (function(){
 
                 name.push(item.name);
             });
+            var barColor = random_rgba(1), priceGap = [];
+            chartDatas[0].datas[0].forEach((item, idx)=> priceGap.push(item - chartDatas[1].datas[0][idx]));
+            datasets.push({
+                label:'두 아파트 매매가 차이',
+                data:priceGap,
+                backgroundColor: Color(barColor).clearer(0.3).rgbaString(),
+                borderColor: Color(barColor).rgbaString(),
+                hoverBackgroundColor: Color(barColor).darken(0.3).clearer(0.3).rgbaString(),
+                hoverBorderColor: Color(barColor).darken(0.3).rgbaString()
+            });
 
             console.log('name : ', name);
             let data = {
