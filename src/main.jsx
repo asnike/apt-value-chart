@@ -238,6 +238,7 @@ var SIDEBAR = (function(){
         $('.btn-send').click(crawlingKB);
         $('#month').val(moment().format('MM'));
         $('#month').change(changeMonth);
+        $('#compare-month').change(changeCompareMonth);
 
         $('body').on('click', '#apt-del-modal .btn-ok', clickDelList);
 
@@ -401,6 +402,9 @@ var SIDEBAR = (function(){
     },
     changeMonth = function (){
         createValueChart([selectedDatas], $('#month').val(), valueChart, '#value-chart');
+    },
+    changeCompareMonth = function (){
+        createValueChart(selectedDatas, $('#compare-month').val(), compareValueChart, '#compare-value-chart');
     },
     renderFromDatas = function(datas){
         selectedDatas = datas;
@@ -623,7 +627,7 @@ var SIDEBAR = (function(){
             return ALERT.open('2개까지만 선택해주세요.');
         }
         console.log('selectedIndexes : ', selectedIndexes);
-        let datas = selectedIndexes.map((idx)=> totalDatas[idx]);
+        let datas = selectedDatas = selectedIndexes.map((idx)=> totalDatas[idx]);
         createPriceChart(datas, comparePriceChart, '#compare-price-chart');
         createValueChart(datas, $('#month').val(), compareValueChart, '#compare-value-chart');
         $('#compare-modal').modal();
